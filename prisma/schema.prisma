@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum CategoryId {
+  c_univ
+  c_intern
+  c_toeic
+  c_learning
+  c_phone
+  c_fun
+  c_meal
+  c_prep
+  c_move
+  c_sleep
+  c_other
+}
+
+model Log {
+  id            String     @id @default(cuid())
+  start         DateTime
+  end           DateTime?
+  category_id   CategoryId
+  note          String     @default("")
+  task_id       String?
+  day_key       String
+  duration_sec  Int?
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+
+  task          Task?      @relation(fields: [task_id], references: [id])
+
+  @@index([day_key])
+  @@index([category_id])
+  @@index([start])
+}
+
+model Task {
+  id           String     @id @default(cuid())
+  title        String
+  category_id  CategoryId
+  plan_sec     Int?
+  due          DateTime?
+  status       String     @default("todo")
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  logs         Log[]
+}

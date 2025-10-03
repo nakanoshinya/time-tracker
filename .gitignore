@@ -1,0 +1,23 @@
+# deps / build
+node_modules/
+.svelte-kit/
+dist/
+.vite/
+# editors
+.vscode/
+.idea/
+# env
+.env
+.env.local
+.env.*.local
+# prisma local db
+prisma/dev.db
+prisma/dev.db-journal
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+bun-debug.log*
+# OS
+.DS_Store
+Thumbs.db
