@@ -1,6 +1,7 @@
 ## Time Tracker（学習アウトプット）
-<img width="3743" height="1956" alt="スクリーンショット 2025-10-06 133456" src="https://github.com/user-attachments/assets/eed4b5c9-08b9-4a8e-ac2a-279b602a990f" />
+
 <img width="3839" height="1975" alt="スクリーンショット 2025-10-06 133356" src="https://github.com/user-attachments/assets/459c1a5b-25c8-40b0-a965-951bff529d40" />
+<img width="3743" height="1956" alt="スクリーンショット 2025-10-06 133456" src="https://github.com/user-attachments/assets/eed4b5c9-08b9-4a8e-ac2a-279b602a990f" />
 
 SvelteKit を用いて実装したシンプルなタイムトラッカーです。日々の活動をカテゴリ別に計測・可視化します。
 
