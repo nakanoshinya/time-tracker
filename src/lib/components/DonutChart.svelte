@@ -1,86 +1,77 @@
-<script>
-  import { logsStore } from '$lib/stores/logs';
-  const { logs } = logsStore;
+<script lang="ts">
+  // 入力: segments = [{ label:'大学', value: 秒数, color:'#hex' }, ...]
+  type DonutSegment = { label: string; value: number; color: string };
+  type DonutPart = DonutSegment & { dash: string; offset: number };
+  export let segments: DonutSegment[] = [];
+  export let size: number = 260;
+  export let thickness: number = 52;
 
-  export let dayKey = (new Date()).toISOString().slice(0,10);
-  export let size = 240;
-  export let thickness = 48;
-  export let categoryColors = {};
-  export let categoryLabels = {};
+  const cx = size / 2, cy = size / 2;
+  const r  = size / 2 - thickness / 2;
+  const C  = 2 * Math.PI * r;
 
-  const defaultPalette = ["#4f46e5","#06b6d4","#f97316","#10b981","#ef4444","#8b5cf6","#f59e0b","#0ea5e9"];
-  const labelOf = (id) => categoryLabels[id] ?? id;
+  let total: number = 0;
+  $: total = segments.reduce((a, s) => a + (s.value || 0), 0);
 
-  function polarToCartesian(cx, cy, r, angleDeg) {
-    const a = (angleDeg - 90) * Math.PI / 180.0;
-    return { x: cx + (r * Math.cos(a)), y: cy + (r * Math.sin(a)) };
-  }
-  function describeDonutArc(cx, cy, rOuter, rInner, startAngle, endAngle) {
-    const startOuter = polarToCartesian(cx, cy, rOuter, endAngle);
-    const endOuter   = polarToCartesian(cx, cy, rOuter, startAngle);
-    const startInner = polarToCartesian(cx, cy, rInner, endAngle);
-    const endInner   = polarToCartesian(cx, cy, rInner, startAngle);
-    const largeArcFlag = (endAngle - startAngle) <= 180 ? "0" : "1";
-    return [
-      "M", startOuter.x, startOuter.y,
-      "A", rOuter, rOuter, 0, largeArcFlag, 0, endOuter.x, endOuter.y,
-      "L", endInner.x, endInner.y,
-      "A", rInner, rInner, 0, largeArcFlag, 1, startInner.x, startInner.y,
-      "Z"
-    ].join(" ");
-  }
-
-  $: dayLogs = $logs.filter(l => l.day_key === dayKey);
-  $: now = Date.now();
-  $: totals = (() => {
-    const map = new Map();
-    for (const l of dayLogs) {
-      const dur = l.duration_sec != null
-        ? l.duration_sec
-        : Math.max(0, Math.floor((now - new Date(l.start).getTime())/1000));
-      map.set(l.category_id, (map.get(l.category_id) || 0) + dur);
-    }
-    return map;
+  let parts: DonutPart[] = [];
+  $: parts = (() => {
+    if (total <= 0) return [];
+    let acc = 0;
+    return segments.map((s) => {
+      const len = (s.value / total) * C;
+      const seg: DonutPart = { ...s, dash: `${len} ${C - len}`, offset: -acc };
+      acc += len;
+      return seg;
+    });
   })();
-  $: totalSec = Array.from(totals.values()).reduce((a,b)=>a+b, 0);
-  $: slices = (() => {
-    const arr = []; let startAngle = 0; let i = 0;
-    for (const [cat, sec] of totals) {
-      const angle = totalSec ? (sec/totalSec)*360 : 0;
-      const color = categoryColors[cat] ?? defaultPalette[i % defaultPalette.length];
-      arr.push({ category: cat, sec, startAngle, endAngle: startAngle + angle, color });
-      startAngle += angle; i++;
-    }
-    return arr;
-  })();
+
+  // 凡例用アイテム（秒→時間に換算）
+  let legend: { label: string; h: number; color: string }[] = [];
+  $: legend = segments
+    .filter((s) => (s?.value || 0) > 0)
+    .map((s) => ({ label: s.label, h: +(s.value/3600).toFixed(2), color: s.color }));
 </script>
 
-<style>
-  .center-label { font-weight:700; font-size:0.95rem; text-anchor:middle; dominant-baseline:middle; }
-  .legend { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; font-size:0.9rem; }
-  .legend-item { display:flex; align-items:center; gap:8px; padding:2px 6px; border-radius:6px; background:rgba(0,0,0,0.02); }
-  .swatch { width:12px; height:12px; border-radius:2px; }
-</style>
+<svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="カテゴリ分布">
+  <!-- 背景リング -->
+  <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" stroke-width={thickness} />
 
-<div style="width:{size}px;">
-  <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="時間配分ドーナツ">
-    {#if slices.length === 0}
-      <circle cx={size/2} cy={size/2} r={(size/2)-thickness/2} stroke="#e6e6e6" stroke-width={thickness} fill="none" />
-      <text x={size/2} y={size/2} class="center-label">{(0).toFixed(1)}h</text>
-    {:else}
-      {#each slices as s (s.category)}
-        {@html `<path d="${describeDonutArc(size/2,size/2,(size/2),(size/2)-thickness,s.startAngle,s.endAngle)}" fill="${s.color}"><title>${labelOf(s.category)}: ${(s.sec/3600).toFixed(2)} h</title></path>`}
-      {/each}
-      <text x={size/2} y={size/2} class="center-label">{ (totalSec/3600).toFixed(2) }h</text>
-    {/if}
-  </svg>
-
-  <div class="legend">
-    {#each slices as s}
-      <div class="legend-item">
-        <div class="swatch" style="background:{s.color}"></div>
-        <div>{labelOf(s.category)} — {(s.sec/3600).toFixed(2)}h ({ totalSec ? ((s.sec/totalSec)*100).toFixed(1) : '0' }%)</div>
-      </div>
+  <!-- 12時始まりにするため -90°回転 -->
+  <g transform={`rotate(-90 ${cx} ${cy})`}>
+    {#each parts as p (p.label)}
+      <circle
+        cx={cx} cy={cy} r={r}
+        fill="none" stroke={p.color} stroke-width={thickness}
+        stroke-dasharray={p.dash}
+        stroke-dashoffset={p.offset}
+      >
+        <title>{p.label}: {(p.value/3600).toFixed(2)}h</title>
+      </circle>
     {/each}
-  </div>
+  </g>
+
+  <!-- 中央トータル表示 -->
+  <text x={cx} y={cy} text-anchor="middle" dominant-baseline="middle" fill="#334155" font-size="14">
+    {(total/3600).toFixed(1)}h
+  </text>
+</svg>
+
+<div class="legend">
+  {#each legend as seg}
+    <div class="legend-item">
+      <span class="sw" style={`background:${seg.color}`}></span>
+      {seg.label} — {seg.h}h
+    </div>
+  {/each}
+  {#if legend.length === 0}
+    <div class="legend-item empty">データなし</div>
+  {/if}
+  
 </div>
+
+<style>
+  .legend { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; font-size:0.9rem; }
+  .legend-item { display:flex; align-items:center; gap:6px; padding:2px 6px; border-radius:6px; background:rgba(0,0,0,0.04); }
+  .legend-item.empty { background:transparent; color:#64748b }
+  .sw { width:12px; height:12px; border-radius:2px; }
+</style>

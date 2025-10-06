@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { logsStore } from '$lib/stores/logs';
+  import { logsStore } from '$lib/stores/logs.ts';
   const { logs } = logsStore;
 
   export let dayKey = (new Date()).toISOString().slice(0,10);

@@ -1,55 +1,28 @@
-<script lang="ts">
+<script>
   import { createEventDispatcher } from 'svelte';
+  export let open = false;            // 親と bind:open
+  export let categories = [];
+  export let editorInitial = null;    // 親から来る初期値（編集 or 新規）
 
-  type CategoryId =
-    | 'c_univ' | 'c_intern' | 'c_toeic' | 'c_learning' | 'c_phone'
-    | 'c_fun' | 'c_meal' | 'c_prep' | 'c_move' | 'c_sleep' | 'c_other';
-  type Category = { id: CategoryId; name: string };
-  type EditableLog = {
-    id: string;
-    category_id: CategoryId;
-    start: string;
-    end: string | null;
-    note: string;
-  };
-  type SavePayload = {
-    id?: string;
-    category_id: CategoryId;
-    start: string | null;
-    end: string | null;
-    note: string;
-  };
-  type FormState = {
-    id: string | null;
-    category_id: CategoryId;
-    startInput: string;
-    endInput: string;
-    note: string;
-  };
-
-  export let open: boolean = false;            // 親と bind:open
-  export let categories: Category[] = [];
-  export let editorInitial: EditableLog | null = null;    // 親から来る初期値（編集 or 新規）
-
-  const dispatch = createEventDispatcher<{ save: { value: SavePayload }; cancel: void }>();
-  const defaultCat = (): CategoryId => categories[0]?.id ?? 'c_other';
+  const dispatch = createEventDispatcher();
+  const defaultCat = () => categories[0]?.id ?? 'c_other';
 
   // ISO ⇄ <input type="datetime-local"> 変換（ローカル）
-  const toLocalInput = (iso: string | null | undefined): string => {
+  const toLocalInput = (iso) => {
     if (!iso) return '';
     const d = new Date(iso);
     const t = new Date(d.getTime() - d.getTimezoneOffset()*60000);
     return t.toISOString().slice(0,16); // YYYY-MM-DDTHH:mm
   };
-  const fromLocalInput = (s: string | null | undefined): string | null => {
+  const fromLocalInput = (s) => {
     if (!s) return null;
-    // ローカル時刻として解釈された Date を ISO(UTC) に変換
-    const d = new Date(s);
-    return d.toISOString();
+    const d = new Date(s); // ローカル時刻として解釈
+    const t = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+    return t.toISOString();
   };
 
   // フォームは常に「コピー」で持つ（親のオブジェクトは触らない）
-  let form: FormState = {
+  let form = {
     id: null,
     category_id: defaultCat(),
     startInput: toLocalInput(new Date().toISOString()),
@@ -78,13 +51,13 @@
     }
   }
 
-  function onCancel(): void{
+  function onCancel(){
     open = false;               // bind:open で親も閉じる
     dispatch('cancel');
   }
-  function onSubmit(e: Event){
+  function onSubmit(e){
     e.preventDefault();
-    const payload: SavePayload = {
+    const payload = {
       id: form.id ?? undefined,
       category_id: form.category_id,
       start: fromLocalInput(form.startInput),
