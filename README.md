@@ -1,38 +1,85 @@
-# sv
+## Time Tracker（学習アウトプット）
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit を用いて実装したシンプルなタイムトラッカーです。日々の活動をカテゴリ別に計測・可視化します。
 
-## Creating a project
+### 特徴
+- 計測の開始/停止（メモ付き）
+- 手動でのログ追加/編集（モーダル）
+- 当日のログ一覧、24時間円グラフ、カテゴリ分布ドーナツ
+- 週間スタックバー（直近7日）
+- SQLite（Prisma）で手軽に開始、将来的に PostgreSQL など RDB へ移行可能
 
-If you're seeing this, you've probably already done this step. Congrats!
+---
 
-```sh
-# create a new project in the current directory
-npx sv create
+## セットアップ
 
-# create a new project in my-app
-npx sv create my-app
+1) 依存関係のインストール
+```bash
+bun install
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+2) 開発サーバー
+```bash
+bun run dev
 ```
 
-## Building
+DB は Prisma/SQLite を使用します。`.env` の `DATABASE_URL` が未設定の場合は SvelteKit の既定（`prisma/dev.db`）を参照します。
 
-To create a production version of your app:
+---
 
-```sh
-npm run build
-```
+## 技術スタック
+- フロント: SvelteKit v2 / Svelte v5 / Vite 7 / TypeScript
+- サーバ/API: SvelteKit `+server.ts`
+- DB/ORM: Prisma + SQLite
 
-You can preview the production build with `npm run preview`.
+---
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## ディレクトリ（主要）
+- `src/routes/+page.svelte`: ダッシュボード（計測・一覧・チャート）
+- `src/routes/weekly/+page.svelte`: 週間ビュー
+- `src/lib/components/*`: UI コンポーネント群
+- `src/lib/stores/logs.ts`: ログの状態管理（`logs`, `running`, `start/stop`, `refresh` など）
+- `src/routes/api/logs/+server.ts`: 一覧取得・作成
+- `src/routes/api/logs/[id]/+server.ts`: 部分更新
+- `prisma/schema.prisma`: Prisma スキーマ
+
+---
+
+## 画面機能
+- 計測カード: カテゴリ選択、メモ入力、開始/停止、進行中ステータス
+- ログ一覧: 当日範囲と重なるログ（終了したもの）を表示、編集起点
+- 円グラフ（24h）: 当日 0–24h の円形時間分布（進行中は現在時刻まで）
+- ドーナツ: 当日寄与時間をカテゴリ別に集計
+- 週間スタックバー: 直近7日のカテゴリ別積み上げ
+
+---
+
+## API（簡易仕様）
+- `GET /api/logs` … 全件取得（`start` 昇順）
+- `POST /api/logs` … 作成 `{ category_id, start: ISO, end: ISO|null, note }`
+- `PATCH /api/logs/:id` … 部分更新（上記フィールドの任意）
+
+サーバ側で `day_key`（ローカル日付 `YYYY-MM-DD`）を算出・更新します。
+
+---
+
+## データモデル（Prisma）
+- `Log` … 計測ログ
+  - `id`, `start`, `end?`, `category_id`(enum), `note`, `day_key`, `created_at`, `updated_at`
+  - インデックス: `day_key`, `category_id`, `start`
+- `Task` …（将来拡張用。UI 未接続）
+
+---
+
+## タイムゾーンと集計
+- 入力: ローカルの `datetime-local` を ISO に変換して保存
+- 集計: 表示日の 0–24h にログ区間をクランプして秒数集計
+- `day_key`: `start` のローカル日付から生成（`timezoneOffset` を控除して `YYYY-MM-DD`）
+
+
+---
+
+## 開発メモ
+- 開始/停止は `logsStore.start/stop` が API を叩き、進行中の状態は `running` に保持
+- 編集モーダルはローカル→ISO 変換を二重補正せず、ズレを防止
+- 可視化は `new Date(iso)` をローカルとして扱う前提で統一
