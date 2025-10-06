@@ -1,23 +1,23 @@
-<script>
+<script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  export let logs = [];
-  export let max = 5;
-  export let categoryLabels = {};
+  export let logs: any[] = [];
+  export let max: number = 5;
+  export let categoryLabels: Record<string, string> = {};
   const dispatch = createEventDispatcher();
 
-  const labelOf = (id) => categoryLabels[id] ?? id;
-  const fmtDate = (iso) => new Date(iso).toLocaleDateString();
-  const fmtTime = (iso) => new Date(iso).toLocaleTimeString();
-  const durSec = (l) => l.end ? Math.max(0, Math.floor((new Date(l.end)-new Date(l.start))/1000)) : 0;
-  const durH = (s) => (s/3600).toFixed(2)+'h';
+  const labelOf = (id: string): string => categoryLabels[id] ?? id;
+  const fmtDate = (iso: string): string => new Date(iso).toLocaleDateString();
+  const fmtTime = (iso: string): string => new Date(iso).toLocaleTimeString();
+  const durSec = (l: any): number => l.end ? Math.max(0, Math.floor((new Date(l.end).getTime()-new Date(l.start).getTime())/1000)) : 0;
+  const durH = (s: number): string => (s/3600).toFixed(2)+'h';
 
   let limit = max;
-  $: sorted = logs.slice().sort((a,b)=> new Date(b.start) - new Date(a.start));
+  $: sorted = logs.slice().sort((a,b)=> new Date(b.start).getTime() - new Date(a.start).getTime());
   $: view = sorted.slice(0, limit);
 
-  function showAll(){ limit = logs.length; }
-  function showLess(){ limit = max; }
-  function onEdit(l){ dispatch('edit', { item: l }); }
+  function showAll(): void { limit = logs.length; }
+  function showLess(): void { limit = max; }
+  function onEdit(l: any): void { dispatch('edit', { item: l }); }
 </script>
 
 <div class="card log-card">

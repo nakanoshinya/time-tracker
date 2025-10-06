@@ -1,35 +1,48 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
-  import { logsStore } from '$lib/stores/logs.ts';
+  import { logsStore } from '$lib/stores/logs';
   const { logs } = logsStore;
 
-  export let dayKey = (new Date()).toISOString().slice(0,10);
-  export let height = 80;
-  export let padding = 24;
-  export let categoryColors = {};
-  export let categoryLabels = {};
+  export let dayKey: string = (new Date()).toISOString().slice(0,10);
+  export let height: number = 80;
+  export let padding: number = 24;
+  export let categoryColors: Record<string, string> = {};
+  export let categoryLabels: Record<string, string> = {};
 
   const defaultPalette = ["#4f46e5","#06b6d4","#f97316","#10b981","#ef4444","#8b5cf6","#f59e0b","#0ea5e9"];
-  const idxColor = (cat, i) => categoryColors[cat] ?? defaultPalette[i % defaultPalette.length];
-  const labelOf  = (id) => categoryLabels[id] ?? id;
+  const idxColor = (cat: string, i: number): string => categoryColors[cat] ?? defaultPalette[i % defaultPalette.length];
+  const labelOf  = (id: string): string => categoryLabels[id] ?? id;
 
   $: dayStart = new Date(dayKey + 'T00:00:00'); // ローカル日の開始
   $: dayEnd   = new Date(new Date(dayStart).setDate(dayStart.getDate()+1)); // 翌日0:00
 
+  type DayLog = {
+    s: Date;
+    e: Date;
+    startPct: number;
+    endPct: number;
+    index: number;
+    [key: string]: any;
+  };
+
+  let dayLogs: DayLog[] = [];
   $: dayLogs = $logs
-    .filter(l => l.day_key === dayKey)
-    .map((l, i) => {
+    .filter((l: any) => l.day_key === dayKey)
+    .map((l: any, i: number) => {
       const s = new Date(l.start);
       const e = l.end ? new Date(l.end) : new Date();
       const startClamped = s < dayStart ? dayStart : s;
       const endClamped   = e > dayEnd ? dayEnd : e;
-      const startPct = (startClamped - dayStart) / (dayEnd - dayStart);
-      const endPct   = (endClamped - dayStart) / (dayEnd - dayStart);
+      const startPct = (startClamped.getTime() - dayStart.getTime()) / (dayEnd.getTime() - dayStart.getTime());
+      const endPct   = (endClamped.getTime() - dayStart.getTime()) / (dayEnd.getTime() - dayStart.getTime());
       return { ...l, s: startClamped, e: endClamped, startPct, endPct, index: i };
     });
 
-  let container; let width = 640;
-  function updateWidth(){ if (container) width = container.clientWidth; }
+  let container: HTMLDivElement;
+  let width = 640;
+  function updateWidth(): void {
+    if (container) width = container.clientWidth;
+  }
   onMount(() => {
     updateWidth();
     const ro = new ResizeObserver(updateWidth);
@@ -37,12 +50,11 @@
     return () => ro.disconnect();
   });
 
-  const fmtTime = (d) => new Date(d).toLocaleTimeString();
+  const fmtTime = (d: Date | string): string => new Date(d).toLocaleTimeString();
 </script>
 
 <style>
   .timeline { width:100%; border:1px solid #eee; padding:8px; border-radius:8px; background:#fff; box-shadow: 0 1px 0 rgba(0,0,0,0.02); }
-  .bar { rx:4; ry:4; }
   .axis { font-size:12px; fill:#666; }
 </style>
 
@@ -78,7 +90,7 @@
       {@html (() => {
         const now = Date.now();
         if (now < dayStart.getTime() || now > dayEnd.getTime()) return '';
-        const pct = (now - dayStart) / (dayEnd - dayStart);
+        const pct = (now - dayStart.getTime()) / (dayEnd.getTime() - dayStart.getTime());
         const x = padding + ((width - padding*2) * pct);
         return `<g><line x1="${x}" x2="${x}" y1="4" y2="${height-20}" stroke="#ff0000" stroke-width="1" stroke-opacity="0.6"></line></g>`;
       })()}

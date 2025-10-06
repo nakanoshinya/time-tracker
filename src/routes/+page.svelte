@@ -23,8 +23,8 @@
     { id:'c_sleep',    name:'睡眠' },
     { id:'c_other',    name:'その他' },
   ];
-  const categoryLabels = Object.fromEntries(categories.map(c => [c.id, c.name]));
-  const categoryColors = {
+  const categoryLabels: Record<string, string> = Object.fromEntries(categories.map(c => [c.id, c.name]));
+  const categoryColors: Record<string, string> = {
     c_univ:'#0ea5e9', c_intern:'#06b6d4', c_toeic:'#a78bfa', c_learning:'#10b981',
     c_phone:'#f43f5e', c_fun:'#f59e0b', c_meal:'#ef4444', c_prep:'#22c55e',
     c_move:'#3b82f6', c_sleep:'#64748b', c_other:'#94a3b8'
@@ -49,13 +49,13 @@
   };
 
   // ログ区間を当日範囲にクランプして秒数を返す（未終了は0）
-  const clampSec = (log: any, dayStart: Date, dayEnd: Date) => {
+  const clampSec = (log: any, dayStart: Date, dayEnd: Date): number => {
     if (!log.end) return 0;
     const s = new Date(log.start);
     const e = new Date(log.end);
     const cs = s < dayStart ? dayStart : s;
     const ce = e > dayEnd   ? dayEnd   : e;
-    const sec = (ce - cs) / 1000;
+    const sec = (ce.getTime() - cs.getTime()) / 1000;
     return sec > 0 ? Math.floor(sec) : 0;
   };
 
@@ -72,8 +72,9 @@
   });
 
   // すべてのログから当日の寄与分だけを集計（カテゴリ別・秒）
+  let donutTotals: Record<string, number> = {};
   $: donutTotals = (() => {
-    const t = {};
+    const t: Record<string, number> = {};
     for (const l of $logs) {
       const sec = clampSec(l, dayStart, dayEnd);
       if (sec > 0) t[l.category_id] = (t[l.category_id] || 0) + sec;

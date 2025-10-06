@@ -1,32 +1,33 @@
-<script>
-  import { logsStore } from '$lib/stores/logs.ts';
+<script lang="ts">
+  import { logsStore, type CategoryId } from '$lib/stores/logs';
   const { logs } = logsStore;
 
-  export let dayKey;
-  export let size = 260;
-  export let ring = 24;
-  export let categoryColors = {};
-  export let categoryLabels = {};
-  const labelOf = (id) => categoryLabels[id] ?? id;
+  export let dayKey: string;
+  export let size: number = 260;
+  export let ring: number = 24;
+  export let categoryColors: Record<string, string> = {};
+  export let categoryLabels: Record<string, string> = {};
+  const labelOf = (id: string): string => categoryLabels[id] ?? id;
 
   const cx = size/2, cy = size/2;
   const outerR = size/2 - 6;
   const innerR = outerR - ring;
 
   // ★修正点：ISOは new Date(iso) で既にローカル時刻になる。追加補正しない。
-  const toLocal = (iso) => new Date(iso);
+  const toLocal = (iso: string): Date => new Date(iso);
 
   // 0..24h → 0..360deg
-  const degOf = (date) => {
+  const degOf = (date: Date): number => {
     const h = date.getHours() + date.getMinutes()/60 + date.getSeconds()/3600;
     return h / 24 * 360;
   };
 
-  const polar = (cx, cy, r, deg) => {
+  const polar = (cx: number, cy: number, r: number, deg: number): { x: number; y: number } => {
     const rad = (deg-90) * Math.PI/180;
     return { x: cx + r*Math.cos(rad), y: cy + r*Math.sin(rad) };
   };
-  function arcPath(cx, cy, r1, r2, a0, a1){
+  
+  function arcPath(cx: number, cy: number, r1: number, r2: number, a0: number, a1: number): string {
     const p0o = polar(cx, cy, r2, a0), p1o = polar(cx, cy, r2, a1);
     const p0i = polar(cx, cy, r1, a0), p1i = polar(cx, cy, r1, a1);
     const large = ((a1 - a0 + 360) % 360) > 180 ? 1 : 0;
@@ -39,10 +40,18 @@
     ].join(' ');
   }
 
-  $: segments = [];
+  type Segment = {
+    id: string;
+    color: string;
+    a0: number;
+    a1: number;
+    sec: number;
+  };
+
+  let segments: Segment[] = [];
   $: (function build(){
     segments = [];
-    const dayLogs = $logs.filter(l => l.day_key === dayKey);
+    const dayLogs = $logs.filter((l: any) => l.day_key === dayKey);
     for (const l of dayLogs) {
       const s = toLocal(l.start), e = l.end ? toLocal(l.end) : null;
       let a0 = degOf(s), a1 = e ? degOf(e) : degOf(new Date());
@@ -51,15 +60,22 @@
         id: l.category_id,
         color: categoryColors[l.category_id] || '#999',
         a0, a1,
-        sec: l.end ? Math.max(0, Math.floor((new Date(l.end)-new Date(l.start))/1000)) : 0
+        sec: l.end ? Math.max(0, Math.floor((new Date(l.end).getTime()-new Date(l.start).getTime())/1000)) : 0
       });
     }
   })();
 
   $: summary = (() => {
-    const t={}; for(const s of segments){ t[s.id]=(t[s.id]||0)+(s.sec||0); } return t;
+    const t: Record<string, number> = {};
+    for(const s of segments){ t[s.id]=(t[s.id]||0)+(s.sec||0); }
+    return t;
   })();
-  $: items = Object.entries(summary).map(([id,sec])=>({id, h:+(sec/3600).toFixed(2), color: categoryColors[id]||'#999' }));
+  
+  $: items = Object.entries(summary).map(([id,sec])=>({
+    id,
+    h:+(sec/3600).toFixed(2),
+    color: categoryColors[id]||'#999'
+  }));
 </script>
 
 <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="24時間円グラフ">

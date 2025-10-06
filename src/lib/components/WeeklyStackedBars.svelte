@@ -1,21 +1,24 @@
-<script>
-  export let days = [];                // [{day:'YYYY-MM-DD', totals:{c_xxx:sec,...}}, ...]
-  export let categories = [];          // [{id,name}, ...]
-  export let categoryLabels = {};      // {id:'大学',...}
-  export let categoryColors  = {};     // {id:'#color',...}
-  export let width = 900;
-  export let height = 320;
+<script lang="ts">
+  type DayData = { day: string; totals: Record<string, number> };
+  type Category = { id: string; name: string };
+  
+  export let days: DayData[] = [];                // [{day:'YYYY-MM-DD', totals:{c_xxx:sec,...}}, ...]
+  export let categories: Category[] = [];          // [{id,name}, ...]
+  export let categoryLabels: Record<string, string> = {};      // {id:'大学',...}
+  export let categoryColors: Record<string, string> = {};     // {id:'#color',...}
+  export let width: number = 900;
+  export let height: number = 320;
 
   const pad = { top: 16, right: 20, bottom: 40, left: 44 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top  - pad.bottom;
 
   const maxSec = 24 * 3600;
-  const secToY  = (sec) => pad.top + innerH - (sec / maxSec) * innerH;
-  const fmtMD   = (k) => k?.slice(5).replace('-', '/'); // 'MM/DD'
-  const fmtH    = (sec) => (sec/3600).toFixed(2) + 'h';
+  const secToY  = (sec: number): number => pad.top + innerH - (sec / maxSec) * innerH;
+  const fmtMD   = (k: string): string => k?.slice(5).replace('-', '/'); // 'MM/DD'
+  const fmtH    = (sec: number): string => (sec/3600).toFixed(2) + 'h';
   const palette = ['#10B981','#6366F1','#F59E0B','#EF4444','#06B6D4','#84CC16','#A78BFA','#F97316'];
-  const colorOf = (id, i) => categoryColors[id] ?? palette[i % palette.length];
+  const colorOf = (id: string, i: number): string => categoryColors[id] ?? palette[i % palette.length];
 
   const yticksH = [0,6,12,18,24];
 
@@ -56,7 +59,7 @@
   <text x={pad.left-20} y={pad.top-4} text-anchor="end" fill="#64748b" font-size="11">h</text>
 
   {#each bars as b (b.day)}
-    {#each b.segs as s (s.id)}
+    {#each b.segs.filter((s): s is NonNullable<typeof s> => s !== null) as s (s.id)}
       <rect x={b.x} y={s.y} width={barW} height={s.h} fill={s.color} rx="4">
         <title>{fmtMD(b.day)}  {s.label}: {fmtH(s.sec)}</title>
       </rect>
